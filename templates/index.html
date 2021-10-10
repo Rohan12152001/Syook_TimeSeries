@@ -9,16 +9,16 @@
 <body>
 <h2>Hello Client!</h2>
 
-<div>
-    <input type="button" value="Start Emitter" id="StartButton" onsubmit="StartEmitter()"/>
-</div>
-
 <div id="log-div">
+    <ul id="log-list">
 
+    </ul>
 </div>
 
 <script>
-    let socket = new WebSocket("ws://127.0.0.1:8080/ws");
+    let logList = document.getElementById("log-list")
+    listenerPort = 53612
+    let socket = new WebSocket(`ws://127.0.0.1:${listenerPort}/ui`);
     console.log("Attempting Connection...");
 
     socket.onopen = () => {
@@ -35,14 +35,12 @@
     };
     socket.onmessage = event => {
         // Add logs to the page
-
+        console.log("Message is: ", event);
+        // let object = JSON.parse(event.data)
+        var li = document.createElement('li');
+        li.appendChild(document.createTextNode(event.data));
+        logList.appendChild(li);
     };
-
-
-    function StartEmitter(){
-        socket.send("START")
-        console.log("Emitter started!");
-    }
 
 </script>
 </body>

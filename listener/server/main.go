@@ -6,7 +6,6 @@ import (
 	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener"
 	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener/data"
 	"github.com/gorilla/websocket"
-	"github.com/phayes/freeport"
 	"github.com/sirupsen/logrus"
 	"log"
 	"net/http"
@@ -23,21 +22,29 @@ type MessageStruct struct {
 	enString string `json:"enString"`
 }
 
+func pushIntoSockets(result data.LiveData){
+	for client := range socketPool{
+		client.WriteJSON(result)
+	}
+}
 
 // Decrypt, Save & Emit
 func decryptAndEmit(enStr string){
 	splitArray := strings.Split(enStr, "|")
 
-	//TODO: (ASK should we pass a channel to the manager
-	// & while loop on the channel below here ?)
-
-	liveChannel := make(chan data.LiveData)
-	go listener.DecryptAndEmit(splitArray, &liveChannel)		// On service layer Todo: Looks fine ?
-
-	for result := range liveChannel {
-		fmt.Println("RESULT: ", result)
-		// TODO: Here iterate socket pool and emit to all
+	for _, objectString := range splitArray{
+		decryptedObject, err := listener.DecryptAndEmit(objectString)		// On service layer
+		if err != nil {
+			if err==listener.DiscardedError{
+				continue
+			}
+			log.Println(err)
+			return
+		}
+		fmt.Println("result: ", decryptedObject)
+		go pushIntoSockets(decryptedObject)
 	}
+
 	fmt.Println("DONE!")
 }
 
@@ -60,6 +67,7 @@ func connectToEmitter(){
 
 	for {
 		_, message, err := socketObject.ReadMessage()
+		// TODO: Handle this gracefully!
 		if err != nil {
 			log.Println(err)
 			return
@@ -68,7 +76,7 @@ func connectToEmitter(){
 		enStr := string(message)
 		enStr = enStr[1 : len(enStr)-2]
 
-		decryptAndEmit(enStr)
+		go decryptAndEmit(enStr)
 	}
 }
 
@@ -111,8 +119,13 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	go reader(ws)
 }
 
+func homePage(w http.ResponseWriter, r *http.Request){
+	http.ServeFile(w, r, "templates/index.html")
+}
+
 func setupRoutes() {
 	http.HandleFunc("/ui", wsEndpoint)			// WebSocket for clients
+	http.HandleFunc("/home", homePage)			// Client page
 }
 
 func main() {
@@ -122,10 +135,12 @@ func main() {
 
 	go connectToEmitter()
 
-	freePort, err := freeport.GetFreePort()
-	if err != nil {
-		log.Fatal(err)
-	}
+	//freePort, err := freeport.GetFreePort()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
+	freePort := 53612
 
 	portString := ":" + strconv.Itoa(freePort)
 	fmt.Println("Using port:", portString)

@@ -1,14 +1,14 @@
 package main
 
 import (
-"flag"
+	"flag"
 	"fmt"
 	"github.com/Rohan12152001/Syook_TimeSeries/emitter/utils"
-"github.com/gorilla/websocket"
-_ "html/template"
-"log"
-"net/http"
-"time"
+	"github.com/gorilla/websocket"
+	_ "html/template"
+	"log"
+	"net/http"
+	"time"
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")
@@ -21,16 +21,19 @@ type MessageStruct struct {
 }
 
 func startEmitter(){
+	ticker := time.NewTicker(time.Second*5)
+	defer ticker.Stop()
 	for{
-		// Form the encrypted string here
-		encryptedString := utils.FormFinalString()
-		fmt.Println("Emitter:", encryptedString)
+		select {
+		case <- ticker.C:
+			// Form the encrypted string here
+			encryptedString := utils.FormFinalString()
+			fmt.Println("Emitter:", encryptedString)
 
-		for obj := range socketPool{
-			obj.WriteJSON(encryptedString)
+			for obj := range socketPool{
+				obj.WriteJSON(encryptedString)
+			}
 		}
-		// emit in every 10 secs to all the clientSockets
-		time.Sleep(5*1000000000)
 	}
 }
 
