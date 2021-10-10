@@ -15,6 +15,7 @@
 - Also, the success rates are displayed in the info logs where docker-compose is fired.
 
 ### About Docker & localhost
+- I am a very beginner with docker, I have tried my best to get this tool working.
 - Once the repo is cloned, follow two steps:
     - docker-compose build
     - docker-compose up
