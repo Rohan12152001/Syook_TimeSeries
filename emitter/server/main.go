@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/Rohan12152001/Syook_TimeSeries/emitter/utils"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 	_ "html/template"
 	"log"
 	"net/http"
@@ -15,6 +15,7 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 
 var upgrader = websocket.Upgrader{} // use default options
 var socketPool = map[*websocket.Conn]bool{}
+var logger = logrus.New()
 
 type MessageStruct struct {
 	enString string `json:"enString"`
@@ -28,7 +29,6 @@ func startEmitter(){
 		case <- ticker.C:
 			// Form the encrypted string here
 			encryptedString := utils.FormFinalString()
-			fmt.Println("Emitter:", encryptedString)
 
 			for obj := range socketPool{
 				obj.WriteJSON(encryptedString)
@@ -40,7 +40,7 @@ func startEmitter(){
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("upgrade:", err)
+		logger.Error("upgrade:", err)
 		return
 	}
 
@@ -54,16 +54,16 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
-			log.Println("read:", err)
+			logger.Error("read:", err)
 			break
 		}
-		log.Printf("recv: %s", message)
+		logger.Infof("recv: %s", message)
 	}
 }
 
 func main() {
-	flag.Parse()
-	log.SetFlags(0)
+	//flag.Parse()
+	//log.SetFlags(0)
 	http.HandleFunc("/ws", wsEndpoint)
 	go startEmitter()
 	log.Fatal(http.ListenAndServe(*addr, nil))

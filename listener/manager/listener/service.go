@@ -4,25 +4,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener/data"
+	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener/db"
 	utils2 "github.com/Rohan12152001/Syook_TimeSeries/listener/utils"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
-var (
-	DiscardedError = fmt.Errorf("object discarded")
-)
+type manager struct {
+	db db.TimeSeriesDBManager
+}
 
-/*
-Both steps need to be at service layer, and return the object here at ENDPOINT layer & use it
-1. routine for validation
-2. Adding messages into DB
-3. sending decrypted messages to all UI's
-*/
+func New() ListenerManager {
+	return manager{
+		db: db.New(),
+	}
+}
+
+var logger = logrus.New()
 
 // DecryptAndEmit is mostly a Goroutine so no returns & ONLY panic ?  TODO: ASK THIS
-func DecryptAndEmit(enString string) (data.LiveData, error) {
+func (m manager)DecryptAndEmit(enString, myListenerId string) (data.LiveData, error) {
 	deStr, err := utils2.Decrypt(enString, utils2.SecretKey)
 	if err != nil {
-		panic(err)
+		logger.Error(err)
 	}
 
 	// 1. routine for validation
@@ -31,7 +35,7 @@ func DecryptAndEmit(enString string) (data.LiveData, error) {
 
 	err = json.Unmarshal(bytes, &dataPayload)
 	if err != nil {
-		fmt.Println("Unmarshal problem...")
+		logger.Error(err)
 		return data.LiveData{}, err
 	}
 
@@ -43,8 +47,19 @@ func DecryptAndEmit(enString string) (data.LiveData, error) {
 		return data.LiveData{}, DiscardedError
 	}
 
-	//TODO: 2. Adding messages into DB
-	// HERE
+	//2. Adding messages into DB
+	newObjectId := uuid.New().String()
+
+	dataBytes, err := json.Marshal(dataPayload)
+	if err != nil {
+		panic (err)
+	}
+
+	err = m.db.InsertObject(string(dataBytes), myListenerId, newObjectId)
+	if err != nil {
+		logger.Error(err)
+		return data.LiveData{}, err
+	}
 
 	// 3. Return decrypted message
 	return dataPayload, nil

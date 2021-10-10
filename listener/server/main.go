@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener"
 	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener/data"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,12 +17,14 @@ import (
 var logger = logrus.New()
 var upgrader = websocket.Upgrader{}
 var socketPool = map[*websocket.Conn]bool{}
+var listenerManager = listener.New()
+var myListenerId = uuid.New().String()
 
 type MessageStruct struct {
 	enString string `json:"enString"`
 }
 
-func pushIntoSockets(result data.LiveData){
+func pushLiveDataIntoSockets(result data.LiveData){
 	for client := range socketPool{
 		client.WriteJSON(result)
 	}
@@ -33,16 +35,16 @@ func decryptAndEmit(enStr string){
 	splitArray := strings.Split(enStr, "|")
 
 	for _, objectString := range splitArray{
-		decryptedObject, err := listener.DecryptAndEmit(objectString)		// On service layer
+		decryptedObject, err := listenerManager.DecryptAndEmit(objectString, myListenerId)		// On service layer
 		if err != nil {
 			if err==listener.DiscardedError{
 				continue
 			}
-			log.Println(err)
+			logger.Error(err)
 			return
 		}
 		fmt.Println("result: ", decryptedObject)
-		go pushIntoSockets(decryptedObject)
+		go pushLiveDataIntoSockets(decryptedObject)
 	}
 
 	fmt.Println("DONE!")
@@ -60,7 +62,7 @@ func connectToEmitter(){
 
 	socketObject,_, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 	}
 
 	defer socketObject.Close()
@@ -69,7 +71,7 @@ func connectToEmitter(){
 		_, message, err := socketObject.ReadMessage()
 		// TODO: Handle this gracefully!
 		if err != nil {
-			log.Println(err)
+			logger.Error(err)
 			return
 		}
 
@@ -89,12 +91,12 @@ func reader(conn *websocket.Conn) {
 		// read in a message
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
+			logger.Error(err)
 			return
 		}
 
 		if err := conn.WriteMessage(messageType, message); err != nil {
-			log.Println(err)
+			logger.Error(err)
 			return
 		}
 	}
@@ -107,14 +109,14 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	// connection
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Error("upgrade: ", err)
 	}
 
 	// Add the connection to pool
 	socketPool[ws] = true
 
 	// helpful log statement to show connections
-	log.Println("Client Connected")
+	logger.Println("Client Connected")
 
 	go reader(ws)
 }
@@ -135,6 +137,7 @@ func main() {
 
 	go connectToEmitter()
 
+	// For free ports
 	//freePort, err := freeport.GetFreePort()
 	//if err != nil {
 	//	log.Fatal(err)
