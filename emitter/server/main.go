@@ -1,66 +1,44 @@
 package main
 
 import (
-	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
-	"log"
-	"net/http"
-	"time"
+"flag"
+	"fmt"
+	"github.com/Rohan12152001/Syook_TimeSeries/emitter/utils"
+"github.com/gorilla/websocket"
+_ "html/template"
+"log"
+"net/http"
+"time"
 )
 
-var logger = logrus.New()
-var upgrader = websocket.Upgrader{}
+var addr = flag.String("addr", "localhost:8080", "http service address")
+
+var upgrader = websocket.Upgrader{} // use default options
 var socketPool = map[*websocket.Conn]bool{}
 
-func startEmitter(){
-	// Form the encrypted string here
-	//encryptedString := utils.FormFinalString()	// IMP
-
-	// emit in every 10 secs to all the clientSockets
-	for{
-		time.Sleep(10)
-		//for obj := range socketPool{
-		//	// TODO: Here
-		//}
-	}
-
-	// tmp, emit hello after every 10secs
-	for{
-		time.Sleep(3)
-		for obj := range socketPool{
-			obj.WriteJSON("hello")
-		}
-	}
+type MessageStruct struct {
+	enString string `json:"enString"`
 }
 
-func reader(conn *websocket.Conn) {
-	defer func() {
-		delete(socketPool, conn)
-		conn.Close()
-	}()
-	for {
-		// read in a message
-		messageType, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
+func startEmitter(){
+	for{
+		// Form the encrypted string here
+		encryptedString := utils.FormFinalString()
+		fmt.Println("Emitter:", encryptedString)
 
-		if err := conn.WriteMessage(messageType, message); err != nil {
-			log.Println(err)
-			return
+		for obj := range socketPool{
+			obj.WriteJSON(encryptedString)
 		}
+		// emit in every 10 secs to all the clientSockets
+		time.Sleep(5*1000000000)
 	}
 }
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
-	//upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-
-	// upgrade this connection to a WebSocket
-	// connection
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Print("upgrade:", err)
+		return
 	}
 
 	// Add the connection to pool
@@ -69,23 +47,21 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	// helpful log statement to show connections
 	log.Println("Client Connected")
 
-	go reader(ws)
-}
-
-func setupRoutes() {
-	http.HandleFunc("/ws", wsEndpoint)
+	defer ws.Close()
+	for {
+		_, message, err := ws.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			break
+		}
+		log.Printf("recv: %s", message)
+	}
 }
 
 func main() {
-	logger.Info("[START EMITTER SERVER]")
-	setupRoutes()
-	startEmitter()
-	logger.Fatal(http.ListenAndServe(":8080", nil))
+	flag.Parse()
+	log.SetFlags(0)
+	http.HandleFunc("/ws", wsEndpoint)
+	go startEmitter()
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
-
-
-
-
-
-
-

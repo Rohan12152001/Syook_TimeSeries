@@ -1,11 +1,9 @@
-package tmp
+package utils
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
-	"fmt"
-	"github.com/itrepablik/itrlog"
 )
 
 // Initialize vector, which is the random bytes
@@ -33,7 +31,6 @@ func Encrypt(text, secretKey string) (string, error) {
 		return "", err
 	}
 	plainText := []byte(text)
-	fmt.Println(">>", len([]byte(secretKey)), block.BlockSize(), len(iv))
 
 	cfb := cipher.NewCTR(block, iv)
 	cipherText := make([]byte, len(plainText))
@@ -56,22 +53,3 @@ func Decrypt(text, secretKey string) (string, error) {
 	return string(plainText), nil
 }
 
-func main() {
-	fmt.Println("Hello Maharlikans!")
-
-	phrase := "Hello World!"
-
-	// To encrypt the phrase
-	encText, err := Encrypt(phrase, secretKey)
-	if err != nil {
-		itrlog.Fatalw("error encrypting your classified text: ", err)
-	}
-	fmt.Println("encrypted text: ", encText)
-
-	// To decrypt the original phrase
-	decText, err := Decrypt(encText, secretKey)
-	if err != nil {
-		itrlog.Fatalw("error decrypting your encrypted text: ", err)
-	}
-	fmt.Println("decrypted text: ", decText)
-}

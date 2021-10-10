@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener"
+	"github.com/Rohan12152001/Syook_TimeSeries/listener/manager/listener/data"
 	"github.com/gorilla/websocket"
 	"github.com/phayes/freeport"
 	"github.com/sirupsen/logrus"
@@ -10,23 +12,34 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 var logger = logrus.New()
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
+var upgrader = websocket.Upgrader{}
 var socketPool = map[*websocket.Conn]bool{}
 
-/*
-Both steps need to be at service layer, and return the object here at ENDPOINT layer & use it
-// 1. routine for validation
+type MessageStruct struct {
+	enString string `json:"enString"`
+}
 
-// 2. Adding messages into DB
 
-// 3. sending decrypted messages to all UI's
-*/
+// Decrypt, Save & Emit
+func decryptAndEmit(enStr string){
+	splitArray := strings.Split(enStr, "|")
+
+	//TODO: (ASK should we pass a channel to the manager
+	// & while loop on the channel below here ?)
+
+	liveChannel := make(chan data.LiveData)
+	go listener.DecryptAndEmit(splitArray, &liveChannel)		// On service layer Todo: Looks fine ?
+
+	for result := range liveChannel {
+		fmt.Println("RESULT: ", result)
+		// TODO: Here iterate socket pool and emit to all
+	}
+	fmt.Println("DONE!")
+}
 
 // Connect TO & Collect messages FROM emitter
 func connectToEmitter(){
@@ -48,13 +61,16 @@ func connectToEmitter(){
 	for {
 		_, message, err := socketObject.ReadMessage()
 		if err != nil {
-			log.Println("error: ", err)
+			log.Println(err)
 			return
 		}
-		fmt.Println("message: ", message)
+
+		enStr := string(message)
+		enStr = enStr[1 : len(enStr)-2]
+
+		decryptAndEmit(enStr)
 	}
 }
-
 
 func reader(conn *websocket.Conn) {
 	defer func() {
@@ -96,7 +112,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func setupRoutes() {
-	http.HandleFunc("/ui", wsEndpoint)			// WS for clients
+	http.HandleFunc("/ui", wsEndpoint)			// WebSocket for clients
 }
 
 func main() {
@@ -104,7 +120,6 @@ func main() {
 
 	setupRoutes()
 
-	// TODO: connectEmitter
 	go connectToEmitter()
 
 	freePort, err := freeport.GetFreePort()

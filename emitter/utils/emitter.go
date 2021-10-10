@@ -33,7 +33,7 @@ func getRandomInt(upperLimit int, exclude optional.Int64) int64{
 
 // Form random object
 func formRandomObject() messageStruct{
-	rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
+	rand.Seed(int64(time.Now().Nanosecond())) // initialize global pseudo random generator
 
 	randomName := AllData.Names[getRandomInt(len(AllData.Names), nil)]
 
@@ -48,7 +48,6 @@ func formRandomObject() messageStruct{
 		Destination: randomDestination,
 	}
 
-	fmt.Println(message)
 	return message
 }
 
@@ -71,11 +70,10 @@ func formRandomObjectString() string{
 	secretHash = base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
 	randomObject.Secret_key = secretHash
-	fmt.Println(randomObject)
+	//fmt.Println(randomObject)
 
 	// Form final string
 	bytes, _ := json.Marshal(randomObject)
-	fmt.Println(bytes)
 
 	return string(bytes)
 }
@@ -84,14 +82,22 @@ func formRandomObjectString() string{
 func FormFinalString() string{
 	finalString := ""
 
-	rand.Seed(time.Now().Unix())
-	for count:=0;count<rand.Intn(499 - 49) + 59;count++{
+	rand.Seed(int64(time.Now().Nanosecond()))
+	end  := 499
+	start := 49
+	// Range is 49-499
+	for count:=0;count<rand.Intn(end - start)+49;count++{
 		tempString := formRandomObjectString()
-		if count==0{
-			finalString += tempString
-		}else{
-			finalString += "|" + tempString
+		enStr, err  := Encrypt(tempString, secretKey)
+		if err != nil {
+			panic(err)
 		}
+		if count==0{
+			finalString += enStr
+		}else{
+			finalString += "|" + enStr
+		}
+		time.Sleep(time.Nanosecond*2)
 	}
 
 	return finalString
