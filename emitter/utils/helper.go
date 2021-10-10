@@ -19,7 +19,7 @@ func encodeBase64(b []byte) string {
 func decodeBase64(s string) []byte {
 	data, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		panic(err)
+		logger.Error(err)
 	}
 	return data
 }
@@ -28,6 +28,7 @@ func decodeBase64(s string) []byte {
 func Encrypt(text, secretKey string) (string, error) {
 	block, err := aes.NewCipher([]byte(secretKey))
 	if err != nil {
+		logger.Error(err)
 		return "", err
 	}
 	plainText := []byte(text)
@@ -36,20 +37,5 @@ func Encrypt(text, secretKey string) (string, error) {
 	cipherText := make([]byte, len(plainText))
 	cfb.XORKeyStream(cipherText, plainText)
 	return encodeBase64(cipherText), nil
-
-
-}
-
-// Decrypt method is to extract back the encrypted text
-func Decrypt(text, secretKey string) (string, error) {
-	block, err := aes.NewCipher([]byte(secretKey))
-	if err != nil {
-		return "", err
-	}
-	cipherText := decodeBase64(text)
-	cfb := cipher.NewCTR(block, iv)
-	plainText := make([]byte, len(cipherText))
-	cfb.XORKeyStream(plainText, cipherText)
-	return string(plainText), nil
 }
 

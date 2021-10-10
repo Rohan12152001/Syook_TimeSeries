@@ -5,7 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 )
@@ -16,6 +16,8 @@ type messageStruct struct {
 	Destination string `json:"destination"`
 	Secret_key string `json:"secret_key"`
 }
+
+var logger = logrus.New()
 
 func getRandomInt(upperLimit int, exclude optional.Int64) int64{
 	if !exclude.IsPresent(){
@@ -61,7 +63,7 @@ func formRandomObjectString() string{
 
 	byteRandomObject, err := json.Marshal(randomObject)
 	if err != nil {
-		fmt.Errorf("Error!")
+		logger.Error(err)
 		return ""
 	}
 
@@ -90,7 +92,8 @@ func FormFinalString() string{
 		tempString := formRandomObjectString()
 		enStr, err  := Encrypt(tempString, secretKey)
 		if err != nil {
-			panic(err)
+			logger.Error(err)
+			continue
 		}
 		if count==0{
 			finalString += enStr

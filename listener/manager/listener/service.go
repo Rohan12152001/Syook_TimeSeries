@@ -52,7 +52,8 @@ func (m manager)DecryptAndEmit(enString, myListenerId string) (data.LiveData, er
 
 	dataBytes, err := json.Marshal(dataPayload)
 	if err != nil {
-		panic (err)
+		logger.Error(err)
+		return data.LiveData{}, err
 	}
 
 	err = m.db.InsertObject(string(dataBytes), myListenerId, newObjectId)

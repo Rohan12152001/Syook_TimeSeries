@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var addr = flag.String("addr", "localhost:8080", "http service address")
+var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
 
 var upgrader = websocket.Upgrader{} // use default options
 var socketPool = map[*websocket.Conn]bool{}
@@ -48,7 +48,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	socketPool[ws] = true
 
 	// helpful log statement to show connections
-	log.Println("Client Connected")
+	logger.Info("Client Connected")
 
 	defer ws.Close()
 	for {
@@ -62,8 +62,6 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	//flag.Parse()
-	//log.SetFlags(0)
 	http.HandleFunc("/ws", wsEndpoint)
 	go startEmitter()
 	log.Fatal(http.ListenAndServe(*addr, nil))

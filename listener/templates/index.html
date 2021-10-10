@@ -7,7 +7,7 @@
     <title>Go WebSocket Tutorial</title>
 </head>
 <body>
-<h2>Hello Client!</h2>
+<h2>Client Side!</h2>
 
 <div id="log-div">
     <ul id="log-list">
@@ -17,6 +17,7 @@
 
 <script>
     let logList = document.getElementById("log-list")
+
     listenerPort = 53612
     let socket = new WebSocket(`ws://127.0.0.1:${listenerPort}/ui`);
     console.log("Attempting Connection...");
@@ -36,8 +37,7 @@
     socket.onmessage = event => {
         // Add logs to the page
         console.log("Message is: ", event);
-        // let object = JSON.parse(event.data)
-        var li = document.createElement('li');
+        let li = document.createElement('li');
         li.appendChild(document.createTextNode(event.data));
         logList.appendChild(li);
     };

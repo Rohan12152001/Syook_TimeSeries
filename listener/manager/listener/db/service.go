@@ -4,19 +4,23 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 type manager struct {
 	db *sqlx.DB
 }
 
+var logger = logrus.New()
+
 func New() TimeSeriesDBManager {
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
+
 	db, err := sqlx.Connect("postgres", psqlInfo)
 	if err != nil {
-		panic(err)
+		logger.Error(err)
 	}
 	return manager{
 		db: db,
