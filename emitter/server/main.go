@@ -22,7 +22,7 @@ type MessageStruct struct {
 }
 
 func startEmitter(){
-	ticker := time.NewTicker(time.Second*5)
+	ticker := time.NewTicker(time.Second*10)
 	defer ticker.Stop()
 	for{
 		select {
